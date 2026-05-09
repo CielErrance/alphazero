@@ -40,47 +40,31 @@ class PUCTMCTS:
         ########################
         # TODO: your code here #
         ########################
-        valid_mask = node.action_mask == 1 # 转换为bool数组
-        N_parent = np.sum(node.child_N_visit)
-        q = np.full(node.n_action, -INF, dtype=np.float64)
+        valid_mask = node.action_mask == 1
         valid_actions = np.where(valid_mask)[0]
 
-        # 为根节点添加噪声
+        if len(valid_actions) == 0:
+            return 0
+
+        # 为根节点添加一次 Dirichlet 噪声，保持自我对弈探索性
         if self.config.with_noise and node is self.root and not getattr(self, '_noise_applied', False):
             priors = node.child_priors.copy()
             noise = np.zeros_like(priors)
-            if len(valid_actions) > 0:
-                dir_noise = np.random.dirichlet([self.config.dir_alpha] * len(valid_actions))
-                noise[valid_actions] = dir_noise
+            dir_noise = np.random.dirichlet([self.config.dir_alpha] * len(valid_actions))
+            noise[valid_actions] = dir_noise
             node.child_priors = (1 - self.config.dir_epsilon) * priors + self.config.dir_epsilon * noise
             self._noise_applied = True
 
-        # 统一按后继状态评估Q，若树中无子节点则临时模拟一步
-        for action in valid_actions:
-            if node.has_child(action):
-                child = node.get_child(action)
-                child_env = child.env
-                reward = child.reward
-                done = child_env.ended
-            else:
-                child_env = node.env.fork()
-                _, reward, done = child_env.step(action)
+        visits = node.child_N_visit.astype(np.float64)
+        q = np.zeros(node.n_action, dtype=np.float64)
+        explored_mask = visits > 0
+        q[explored_mask] = node.child_V_total[explored_mask] / visits[explored_mask]
 
-            if done:
-                q[action] = reward
-                continue
-
-            obs = child_env.observation
-            _, child_value = self.model.predict(
-                child_env.compute_canonical_form_obs(obs, child_env.current_player)
-            )
-            q[action] = -np.asarray(child_value).item()
-
-        priors = node.child_priors
-        explore = self.config.C * priors * np.sqrt(N_parent) / (1.0 + node.child_N_visit)
-        pucb = q + explore
-        pucb[~valid_mask] = -INF
-        return np.argmax(pucb)
+        N_parent = np.sum(visits)
+        explore = self.config.C * node.child_priors * np.sqrt(N_parent + 1.0) / (1.0 + visits)
+        score = q + explore
+        score[~valid_mask] = -INF
+        return int(np.argmax(score))
 
         ########################
 

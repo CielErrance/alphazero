@@ -129,6 +129,7 @@ def execute_episode_worker(
                         env = root_env.fork()
                         state = env.reset()
                         config = copy.copy(mcts_config)
+                        config.with_noise = True
                         mcts = puct_mcts.PUCTMCTS(env, net, config)
                         episode_step = 0
                         train_examples = []
@@ -149,11 +150,15 @@ def execute_episode_worker(
                             if done:
                                 black_reward = reward * player
                                 train_examples = [(obs, pi, black_reward * p) for obs, pi, p in train_examples]
+                                all_examples += train_examples
+                                result_counter.add(black_reward, 1)
+                                all_episode_len.append(episode_step + 1)
                                 break
                             
                             mcts = mcts.get_subtree(action)
                             if mcts is None:
                                 mcts = puct_mcts.PUCTMCTS(env, net, config)
+                            episode_step += 1
                             ########################
                     logger.debug(f"[Worker {id}] Finished {int(args)} episodes (length={all_episode_len}) in {time.time()-st0:.3f}s, {result_counter}")
                     conn.send((all_examples, result_counter))
@@ -431,13 +436,13 @@ if __name__ == "__main__":
     
     # MLP Config
     config = AlphaZeroConfig(
-        n_train_iter=30,
+        n_train_iter=8,
         n_match_train=10,
-        n_match_update=10,
-        n_match_eval=10,
+        n_match_update=20,
+        n_match_eval=20,
         max_queue_length=80000,
         update_threshold=0.501,
-        n_search=120, 
+        n_search=240, 
         temperature=1.0, 
         C=1.0,
         checkpoint_path="checkpoint/mlp_7x7_3layers_exfeat_1"
