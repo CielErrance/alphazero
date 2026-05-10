@@ -434,18 +434,41 @@ if __name__ == "__main__":
     file_handler.setLevel(logging.INFO)
     logger.addHandler(file_handler)
     
-    # MLP Config
+    # # MLP Config
+    # config = AlphaZeroConfig(
+    #     n_train_iter=8,
+    #     n_match_train=10,
+    #     n_match_update=20,
+    #     n_match_eval=20,
+    #     max_queue_length=80000,
+    #     update_threshold=0.501,
+    #     n_search=240, 
+    #     temperature=1.0, 
+    #     C=1.0,
+    #     checkpoint_path="checkpoint/mlp_7x7_3layers_exfeat_1"
+    # )
+    # model_training_config = ModelTrainingConfig(
+    #     epochs=10,
+    #     batch_size=128,
+    #     lr=0.0001,
+    #     weight_decay=0.001
+    # )
+    # model_config = BaseNetConfig(
+    #     linear_hidden=[256, 128]
+    # )    
+
+    # ResNet Config
     config = AlphaZeroConfig(
-        n_train_iter=8,
+        n_train_iter=5,
         n_match_train=10,
-        n_match_update=20,
+        n_match_update=10,
         n_match_eval=20,
         max_queue_length=80000,
         update_threshold=0.501,
-        n_search=240, 
+        n_search=120, 
         temperature=1.0, 
-        C=1.0,
-        checkpoint_path="checkpoint/mlp_7x7_3layers_exfeat_1"
+        C=1.4,
+        checkpoint_path="checkpoint/resnet_7x7_4blocks_exfeat"
     )
     model_training_config = ModelTrainingConfig(
         epochs=10,
@@ -454,7 +477,9 @@ if __name__ == "__main__":
         weight_decay=0.001
     )
     model_config = BaseNetConfig(
-        linear_hidden=[256, 128]
+        linear_hidden=[256, 128],
+        num_res_blocks=4,
+        num_channels=128,
     )
     
     # Linear Config
@@ -495,8 +520,8 @@ if __name__ == "__main__":
     
     def net_builder(device=device):
         # Deep Neural Network
-        # net = MyNet(env.observation_size, env.action_space_size, model_config, device=device)
-        net = MLPNet(env.observation_size, env.action_space_size, model_config, device=device)
+        net = MyNet(env.observation_size, env.action_space_size, model_config, device=device)
+        # net = MLPNet(env.observation_size, env.action_space_size, model_config, device=device)
         net = ModelTrainer(env.observation_size, env.action_space_size, net, model_training_config)
         
         # Numpy Linear Model
@@ -504,9 +529,9 @@ if __name__ == "__main__":
         # net = NumpyLinearModelTrainer(env.observation_size, env.action_space_size, net, model_training_config)
         return net
         
-    N_WORKER = 10 # increase this as large as your device can afford
+    N_WORKER = 2 # increase this as large as your device can afford
     alphazero = AlphaZeroParallel(env, net_builder, config, N_WORKER, seed=MASTER_SEED)
-    alphazero.learn()
+    # alphazero.learn()
     
     # Evaluate and calculate elo score of each checkpoint
     results = alphazero.round_robin(20, window_size=5) # increase window size if available

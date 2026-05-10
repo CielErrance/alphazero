@@ -110,16 +110,17 @@ if __name__ == '__main__':
     Mynet_mcts_config = PUCTMCTSConfig(
         n_search=240, 
         temperature=1.0, 
-        C=1.0,
+        C=1.4,
     )
     Mynet_model_config = BaseNetConfig(
-        linear_hidden=[128, 128],
-        num_channels=32
+        linear_hidden=[256, 128],
+        num_res_blocks=4,
+        num_channels=128,
     )
     
     Mynet_net = MyNet(env.observation_size, env.action_space_size, Mynet_model_config, device=device)
     Mynet_net = ModelTrainer(env.observation_size, env.action_space_size, Mynet_net, ModelTrainingConfig())
-    Mynet_net.load_checkpoint("checkpoint/mynet", "best.pth.tar")
+    Mynet_net.load_checkpoint("checkpoint/resnet_7x7_4blocks_exfeat", "best.pth.tar")
     Mynet_puct_player = PUCTPlayer(Mynet_mcts_config, Mynet_net, deterministic=True)
     
     player1_name = "MLP_net"

@@ -90,13 +90,12 @@ class MyNet(nn.Module):
         self.value_fc2 = nn.Linear(config.linear_hidden[0], 1)
 
         self.to(device)
-        ########################
-        # TODO: your code here #
-        ########################
+
     
     def forward(self, s: torch.Tensor):
         ########################
         # TODO: your code here #
+        ########################
         x = s.view(-1, 1, self.board_x, self.board_y)
         x = F.relu(self.bn_in(self.conv_in(x)))
         for block in self.res_blocks:
@@ -114,7 +113,7 @@ class MyNet(nn.Module):
         v = self.value_fc2(v)
 
         return F.log_softmax(pi, dim=1), torch.tanh(v)
-        ########################
+
 
 
 class ResidualBlock(nn.Module):
